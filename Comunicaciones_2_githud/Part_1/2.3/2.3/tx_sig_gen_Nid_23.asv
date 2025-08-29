@@ -1,0 +1,60 @@
+%tx_sig_gen.m
+clear all;
+close all;
+rand(1,1224);  % Cambie los ultimos 3 digitos por los ultimos 3 numeros de su carne.
+Ts = 1;
+L  = 16;
+t_step = Ts/L;
+a = 0.5; % Roll-off factor for the raised cosine filter
+%%%%%%%%%<1. Generacion de onda del pulso > %%%%%%%%%%%%%%%%%%%%%%
+pt = rcosdesign(a,6,L,'sqrt');
+pt = pt/(max(abs(pt))); %rescaling to match rcosine
+
+%%%%%%%%%<2. Generacion de 100 simbolos binarios >%%%%%%%%%%%%%%%%%%%%
+Ns = 1224;
+data_bit = (rand(1,Ns)>0.5);
+
+%%%%%%%%%<3. Unipolar a Bipolar (modulacion de amplitud)>%%%%%%%%%%%%%%
+%amp_modulated = 2*data_bit -1; % 0=> −1, 1=>1
+
+%%% 4-ario PAM%%%:
+amp_modulated = 2*ceil (rand(1 ,Ns)*4)-5; %Ahora Ns no representa el numero de bits si no mas bien el numero de simbolos 4−arios .
+
+%%%%%%%%%<4.  Modulacion de pulsos >%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+impulse_modulated = [];
+for n=1:Ns
+    delta_signal = [amp_modulated(n)  zeros(1, L-1)];
+    impulse_modulated =[impulse_modulated  delta_signal];
+end
+
+%%%%%%%%<5.Formacion de pulsos (filtrado de transmision)>%%%%%%%%%%
+tx_signal = conv(impulse_modulated, pt);
+matched_out = conv(tx_signal, pt);
+
+figure(100)
+subplot(2,1,1)
+stem(t_step:t_step:(Ns*Ts), impulse_modulated, '.');
+axis([0 Ns*Ts -2*max(impulse_modulated) 2*max(impulse_modulated)]);
+grid on
+title('impulse modulated')
+
+subplot(2,1,2)
+plot(t_step:t_step:(t_step*length(tx_signal)), tx_signal);
+axis([0 Ns*Ts -2*max(tx_signal) 2*max(tx_signal)]);
+grid on
+title('pulse shaped')
+
+figure(200)
+for k=3: floor(Ns/2) - 1 % k representa la k−e simamuestra
+    tmp = matched_out( ((k-1)*2*L+1):(k*2*L) ) ;
+    plot (t_step * ( 0 : ( 2 * L-1)) , tmp ) ;
+    axis ( [ 0 2 min( matched_out ) max( matched_out) ] ) ;
+grid on ; hold on
+%pause(0.1)
+end
+hold off
+
+figure( 300 )
+pwelch(tx_signal, L*8, [], 2048,16);
+axis([0 1 -10 15])
+hold on
