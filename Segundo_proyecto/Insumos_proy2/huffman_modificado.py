@@ -5,8 +5,8 @@ import csv
 from math import log2
 
 # Parametros de entrada y ayuda:
-file_full_path = ""
-file_split_path = [];
+file_full_path = "C:/Users/Asus/Downloads/Insumos_proy2/Insumos_proy2/solo_abc_cien.txt" 
+file_split_path = file_full_path.split("/")
 def myfunc(argv):
     global file_full_path, file_split_path
     arg_output = ""
