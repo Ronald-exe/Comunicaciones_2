@@ -5,14 +5,21 @@ import csv
 from math import log2
 
 # =========================================================
+# CONFIGURACIÓN DE CODIFICACIÓN (UTF-8 PARA WINDOWS)
+# =========================================================
+# Evita errores con caracteres griegos o acentuados
+sys.stdout.reconfigure(encoding='utf-8')
+
+# =========================================================
 # 1. PARÁMETROS DE ENTRADA Y CONFIGURACIÓN
 # =========================================================
-file_full_path = "C:/Users/Asus/Documents/Decimo_semestre/comu2/Comunicaciones_2/Segundo_proyecto/Insumos_proy2/solo_abc_cien.txt" 
+file_full_path = "C:/Users/esteb/Documents/Decimo_semestre/Comu_2/Comunicaciones_2/Segundo_proyecto/Insumos_proy2/solo_abc_cien.txt" 
 file_split_path = file_full_path.split("/")
 
 def myfunc(argv):
+    """Procesa argumentos de línea de comando"""
     global file_full_path, file_split_path
-    arg_help = "{0} -i <input>".format(argv[0])
+    arg_help = f"{argv[0]} -i <input>"
     
     try:
         opts, args = getopt.getopt(argv[1:], "hi:", ["help", "input="])
@@ -59,19 +66,16 @@ class NodeTree(object):
     def children(self):
         return (self.left, self.right)
     def __str__(self):
-        return '%s_%s' % (self.left, self.right)
+        return f'{self.left}_{self.right}'
 
 # =========================================================
-# 4. CALCULO DE FRECUENCIAS
+# 4. CÁLCULO DE FRECUENCIAS
 # =========================================================
 prob_unit = 1 / len(string)
 freq = {}
 
 for c in string:
-    if c in freq:
-        freq[c] += prob_unit
-    else:
-        freq[c] = prob_unit
+    freq[c] = freq.get(c, 0) + prob_unit
 
 freq = sorted(freq.items(), key=lambda x: x[1], reverse=True)
 nodes = freq.copy()
@@ -90,13 +94,13 @@ while len(nodes) > 1:
 # =========================================================
 # 6. GENERACIÓN DE CÓDIGOS DE HUFFMAN
 # =========================================================
-def huffman_code_tree(node, left=True, binString=''):
-    if type(node) is int:
+def huffman_code_tree(node, binString=''):
+    if isinstance(node, int):
         return {node: binString}
     (l, r) = node.children()
-    d = dict()
-    d.update(huffman_code_tree(l, True, binString + '0'))
-    d.update(huffman_code_tree(r, False, binString + '1'))
+    d = {}
+    d.update(huffman_code_tree(l, binString + '0'))
+    d.update(huffman_code_tree(r, binString + '1'))
     return d
 
 huffmanCode = huffman_code_tree(nodes[0][0])
@@ -104,7 +108,7 @@ huffmanCode = huffman_code_tree(nodes[0][0])
 print(' Char | Huffman code ')
 print('----------------------')
 for (char, frequency) in freq:
-    print(' %-4r |%12s' % (char, huffmanCode[char]))
+    print(f' {char!r:4} | {huffmanCode[char]:>12}')
 
 # =========================================================
 # 7. ESTADÍSTICAS DE COMPRESIÓN
@@ -114,20 +118,13 @@ print("ESTADÍSTICAS DE COMPRESIÓN HUFFMAN")
 print("="*60)
 
 # 1. Entropía
-entropia = 0
-for char, prob in freq:
-    if prob > 0:
-        entropia -= prob * log2(prob)
+entropia = -sum(prob * log2(prob) for _, prob in freq if prob > 0)
 
 # 2. Longitud media
-longitud_media = 0
-for char, prob in freq:
-    longitud_media += prob * len(huffmanCode[char])
+longitud_media = sum(prob * len(huffmanCode[char]) for char, prob in freq)
 
 # 3. Varianza
-varianza = 0
-for char, prob in freq:
-    varianza += prob * (len(huffmanCode[char]) - longitud_media) ** 2
+varianza = sum(prob * (len(huffmanCode[char]) - longitud_media) ** 2 for char, prob in freq)
 
 # 4. Eficiencia
 longitud_original = 8  # ASCII
@@ -148,28 +145,21 @@ print(f"\nDETALLE POR SÍMBOLO:")
 print(" Símbolo | Probabilidad | Longitud | Código Huffman")
 print("---------|--------------|-----------|----------------")
 for char, prob in freq:
-    print(f"   {chr(char) if 32 <= char <= 126 else ' ':<2}    |"
-          f"   {prob:.4f}    |"
-          f"     {len(huffmanCode[char]):<2}    |"
-          f" {huffmanCode[char]}")
+    simbolo = chr(char) if 32 <= char <= 126 else ' '
+    print(f"   {simbolo:<2}    |   {prob:.4f}    |     {len(huffmanCode[char]):<2}    | {huffmanCode[char]}")
 
 # =========================================================
 # 8. COMPRESIÓN: VECTOR BINARIO Y BYTES
 # =========================================================
-binary_string = []
-for c in string:
-    binary_string += huffmanCode[c]
-
+binary_string = ''.join(huffmanCode[c] for c in string)
 compressed_length_bit = len(binary_string)
 
 # Padding
-if compressed_length_bit % 8 > 0:
-    for i in range(8 - len(binary_string) % 8):
-        binary_string += '0'
+if compressed_length_bit % 8 != 0:
+    binary_string += '0' * (8 - compressed_length_bit % 8)
 
-# Bytes
-byte_string = "".join([str(i) for i in binary_string])
-byte_string = [byte_string[i:i+8] for i in range(0, len(byte_string), 8)]
+# Conversión a bytes
+byte_string = [binary_string[i:i+8] for i in range(0, len(binary_string), 8)]
 byte_data = [int(b, 2) for b in byte_string]
 
 # =========================================================
@@ -181,7 +171,7 @@ with open(file_huffman_comprimido, "wb") as f:
 # =========================================================
 # 10. GUARDAR DICCIONARIO CSV
 # =========================================================
-with open(ruta_diccionario, 'w', newline='') as csvfile:
+with open(ruta_diccionario, 'w', newline='', encoding='utf-8') as csvfile:
     writer = csv.writer(csvfile)
     writer.writerow([str(compressed_length_bit), "bits"])
     for entrada in huffmanCode:
