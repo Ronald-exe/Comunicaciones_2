@@ -16,3 +16,5 @@ print("Tabla de Suma GF(16):")
 print(add_table)
 print("\nTabla de Multiplicación GF(16):")
 print(mul_table)
+
+
